@@ -4,8 +4,10 @@ PlayAll
 ###A wrapper for tmsu and mplayer which allows creating playlists based on tag combinations. 
 
 Requirements:
-  (+) tmsu (with tags to use)
-  (+) mplayer
+
+  * tmsu (with tags to use)
+  
+  * mplayer
   
 IMPORTANT:
   To use this script, you'll have to ctrl+f for "bede" and replace it with your username.
@@ -28,4 +30,4 @@ Usage:
 --search allows for files which match a search term to be played first. If more than one file matches the search term, they will be added in the correct order (i.e. still in correct album order).#
 
 For help using mplayer, use 'man mplayer'.
-For help using tmsu, use 'tmsu help' or see tmsu.org.
+For help using tmsu, use 'tmsu help' or see http://tmsu.org.
