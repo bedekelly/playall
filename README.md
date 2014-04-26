@@ -14,9 +14,13 @@ IMPORTANT:
 
 Usage:
   playall [tag]...
+  
   playall [tag=value]...
+  
   playall --shuffle [tag | tag=value]...
+  
   playall --search <"search term"> [tag | tag=value]...
+  
   
 --shuffle shuffles the files before being written to playlist. This is so that although the order is random, skipping forwards and backwards in mplayer does not disrupt the order.
 
