@@ -5,12 +5,7 @@ PlayAll
 
 Requirements:
   * tmsu (with tags to use)
-  * mplayer
-  
-IMPORTANT:
-  To use this script, you'll have to ctrl+f for "bede" and replace it with your username.
-  For reasons I can't possibly begin to understand, using the ~ contraction just doesn't cut it.
-  
+  * mplayer  
 
 Usage:
 
