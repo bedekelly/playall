@@ -4,9 +4,7 @@ PlayAll
 ###A wrapper for tmsu and mplayer which allows creating playlists based on tag combinations. 
 
 Requirements:
-
   * tmsu (with tags to use)
-  
   * mplayer
   
 IMPORTANT:
