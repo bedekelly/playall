@@ -1,0 +1,112 @@
+#!/usr/bin/python3
+"""
+A logic-defined music player, which piggybacks off mpd and tmsu.
+
+Usage:
+    playall indie
+    playall chillout and artist=Quantic
+    playall --shuffle chillout hiphop artist=Nujabes
+    playall party,  --first "Deepest Blue"
+
+"""
+
+import sys
+import os
+import subprocess
+import random
+
+
+def write_to_playlist(filename):
+    """
+    Writes each absolute filepath to a playlist file.
+    """
+    with open("playlist", "a") as fileobj:
+        fileobj.write(filename + "\n")
+
+
+def playall():
+    """
+    Executes mplayer with the playlist we created.
+    """
+    # All options after -msglevel ensure far less output than regular mplayer.
+    # mplayer can read from a text file playlist.
+    # The -shuffle option shuffles each time a track is changed, this is
+    # unwanted behaviour.
+    subprocess.call(["mplayer", "-playlist", "playlist",
+                     "-msglevel",
+                     "decaudio=-1:decvideo=-1:statusline=-1:subreader=-1"
+                     ":header=-1:ao=-1:cplayer=-1:codeccfg=-1"])
+
+
+
+def get_files():
+    """
+    Returns a list of absolute filepaths, and a boolean value for whether 
+    the items should be shuffled or not before they are written to the 
+    playlist.
+    """
+    shuffle = "--shuffle" in sys.argv or "-s" in sys.argv  # Boolean value.
+    search = "--search" in sys.argv
+    searchq = sys.argv[sys.argv.index("--search") + 1] if search else None
+
+    # Runs through arguments and gets rid of separators like + and &
+    # Also removes --shuffle and -s flags.
+    # Forms a new list of 'clean' arguments
+    args = [arg.replace(" & ", " or ").replace(",", " or ") for arg in sys.argv[1:]
+            if arg != "-s" and arg != "--shuffle"]
+
+    for index, arg in enumerate(args):
+        if arg == "--search":
+            del args[index+1]
+            del args[index]
+
+
+    # tmsu dynamically creates the folder when it gets referenced.
+    foldername = " ".join(args)
+
+    # User needs to have mounted their tmsu in ~/tmsu
+    folderpath = os.path.join("/home/bede/tmsu/queries", foldername)
+    files = []
+
+    # Gets list of absolute filename paths found in ~/tmsu/queries/%query
+    try:
+        for filename in os.listdir(folderpath):
+            files.append(os.path.realpath(os.path.join(folderpath, filename)))
+    except FileNotFoundError:
+        print("Tag combination \"{}\" not found, will exit.".format(foldername))
+        quit()
+
+    return files, shuffle, searchq
+
+
+def main():
+    if os.path.exists("playlist"):
+        # Wipes playlist filename.
+        open("playlist", "w").write("")
+    files, shuffle, searchq = get_files()
+    if shuffle:
+        random.shuffle(files)
+
+    if searchq:
+        filescopy = files[:]
+        index = 0
+        # Puts all files matching search terms at the start of the playlist,
+        # in their correct (album) order.
+        for filename in filescopy:
+            if searchq.lower() in filename.lower():
+                files.insert(index, filename)
+                index += 1
+
+    for filename in files:
+        write_to_playlist(filename)
+    playall()
+
+
+if __name__ == "__main__":
+    main()
+
+
+"""
+Look through list of files backwards
+If filename matches search criteria, pop it and add it to the front of the list.
+"""
