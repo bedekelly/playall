@@ -63,9 +63,11 @@ def get_files():
 
     # tmsu dynamically creates the folder when it gets referenced.
     foldername = " ".join(args)
-
+    
+    # Find home folder
+    home = os.path.expanduser("~")
     # User needs to have mounted their tmsu in ~/tmsu
-    folderpath = os.path.join("/home/bede/tmsu/queries", foldername)
+    folderpath = os.path.join(home, "tmsu/queries", foldername)
     files = []
 
     # Gets list of absolute filename paths found in ~/tmsu/queries/%query
