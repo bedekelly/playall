@@ -6,7 +6,7 @@ Usage:
     playall indie
     playall chillout and artist=Quantic
     playall --shuffle chillout hiphop artist=Nujabes
-    playall party,  --first "Deepest Blue"
+    playall party,  --search "Deepest Blue"
 
 """
 
@@ -14,13 +14,14 @@ import sys
 import os
 import subprocess
 import random
-
+from os.path import expanduser
+from prettytable import PrettyTable
 
 def write_to_playlist(filename):
     """
     Writes each absolute filepath to a playlist file.
     """
-    with open("playlist", "a") as fileobj:
+    with open("playlist_raw", "a") as fileobj:
         fileobj.write(filename + "\n")
 
 
@@ -31,11 +32,14 @@ def playall():
     # All options after -msglevel ensure far less output than regular mplayer.
     # mplayer can read from a text file playlist.
     # The -shuffle option shuffles each time a track is changed, this is
-    # unwanted behaviour.
-    subprocess.call(["mplayer", "-playlist", "playlist",
+    # unwanted behaviour and so is not used.
+
+    if subprocess.call(["mplayer", "-playlist", "playlist_raw",
                      "-msglevel",
                      "decaudio=-1:decvideo=-1:statusline=-1:subreader=-1"
-                     ":header=-1:ao=-1:cplayer=-1:codeccfg=-1"])
+                     ":header=-1:ao=-1:cplayer=-1:codeccfg=-1"],
+                     stderr=subprocess.DEVNULL):
+        print("No songs matching those tags were found.")
 
 
 
@@ -45,6 +49,8 @@ def get_files():
     the items should be shuffled or not before they are written to the 
     playlist.
     """
+    # Tests if a user doesn't want to play the file yet
+    play = "--generate" not in sys.argv and "-g" not in sys.argv
     shuffle = "--shuffle" in sys.argv or "-s" in sys.argv  # Boolean value.
     search = "--search" in sys.argv
     searchq = sys.argv[sys.argv.index("--search") + 1] if search else None
@@ -52,20 +58,20 @@ def get_files():
     # Runs through arguments and gets rid of separators like + and &
     # Also removes --shuffle and -s flags.
     # Forms a new list of 'clean' arguments
-    args = [arg.replace(" & ", " or ").replace(",", " or ") for arg in sys.argv[1:]
-            if arg != "-s" and arg != "--shuffle"]
+    args = [arg.replace(",", " or ") for arg in sys.argv[1:]
+            if arg not in ["-s", "--shuffle", "-g", "--generate"]]
 
     for index, arg in enumerate(args):
         if arg == "--search":
-            del args[index+1]
-            del args[index]
+            del args[index+1]  # Delete search term.
+            del args[index]  # Delete "--search".
 
 
     # tmsu dynamically creates the folder when it gets referenced.
     foldername = " ".join(args)
-    
-    # Find home folder
-    home = os.path.expanduser("~")
+
+    # Get home directory (x-platform).
+    home = expanduser("~")
     # User needs to have mounted their tmsu in ~/tmsu
     folderpath = os.path.join(home, "tmsu/queries", foldername)
     files = []
@@ -74,18 +80,43 @@ def get_files():
     try:
         for filename in os.listdir(folderpath):
             files.append(os.path.realpath(os.path.join(folderpath, filename)))
-    except FileNotFoundError:
+    except FileNotFoundError as e:
+        print(e)
         print("Tag combination \"{}\" not found, will exit.".format(foldername))
         quit()
 
-    return files, shuffle, searchq
+    return files, shuffle, searchq, play
+
+
+def print_playlist():
+    # Get raw data from playlist
+    playlist_files = open("playlist_raw").readlines()
+
+    # Setup the table's columns.
+    table = PrettyTable(["Track", "Artist", "Album"])
+
+    # Get a list of filenames, minus paths and extensions.
+    filenames = [name.split("/")[-1].strip(".mp3\n")
+                    for name in playlist_files]
+
+    # Setup table's dimensions.
+    table.align["Track"] = "l"
+    table.padding_width = 1
+
+    for filename in filenames:
+        track, artist, album = filename.split(" - ")
+        table.add_row([track, artist, album])
+
+    # Write table to file
+    open("playlist", "w").write(table.get_string())
+    
 
 
 def main():
-    if os.path.exists("playlist"):
+    if os.path.exists("playlist_raw"):
         # Wipes playlist filename.
-        open("playlist", "w").write("")
-    files, shuffle, searchq = get_files()
+        open("playlist_raw", "w").write("")
+    files, shuffle, searchq, play = get_files()
     if shuffle:
         random.shuffle(files)
 
@@ -101,14 +132,26 @@ def main():
 
     for filename in files:
         write_to_playlist(filename)
-    playall()
+    print_playlist()
+    if play:
+        playall()
 
 
 if __name__ == "__main__":
+    try:
+        # If the tmsu folder does not exist, create one.
+        if not os.path.exists(os.path.join(os.path.expanduser("~"), "tmsu")):
+            subprocess.check_call(['mkdir', os.path.join(os.path.expanduser("~"), 'tmsu')], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+    except subprocess.CalledProcessError:
+        pass  # Folder already exists (although this should have been caught)
+
+    try:
+        # Attempts to mount tmsu virtual filesystem
+        # Redirects output/errors to /dev/null
+        subprocess.check_call(['tmsu', 'mount',
+            os.path.join(os.path.expanduser("~"),'tmsu')],
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL)
+    except subprocess.CalledProcessError:
+        pass  # Virtual filesystem already mounted.
     main()
-
-
-"""
-Look through list of files backwards
-If filename matches search criteria, pop it and add it to the front of the list.
-"""
